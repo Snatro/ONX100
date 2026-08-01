@@ -4,11 +4,13 @@ namespace ONX100.Models
 
     public enum MessageType
     {
-        Response,
-        Error,
-        Event,
+        Unknown,
         Handshake,
-        Unknown
+        Event,
+        Disconnect,
+        Response,
+        Acknowledge,
+        Error
     }
 
 
