@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 using ONX100.Driver;
 using ONX100.Models;
 
-
 namespace ONX100.Api.Controllers;
 
 [ApiController]
@@ -16,123 +15,207 @@ public class DeviceController : ControllerBase
         _driver = driver;
     }
 
-
-    // PWR ON
     [HttpPost("power/on")]
     public async Task<IActionResult> PowerOn()
     {
-        var response = await _driver.PowerOn();
-
-        return Ok(response);
+        try
+        {
+            var response = await _driver.PowerOn();
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "An unexpected error occurred.");
+        }
     }
 
-
-    // PWR OFF
     [HttpPost("power/off")]
     public async Task<IActionResult> PowerOff()
     {
-        var response = await _driver.PowerOff();
-
-        return Ok(response);
+        try
+        {
+            var response = await _driver.PowerOff();
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "An unexpected error occurred.");
+        }
     }
 
-
-    // PWR ?
     [HttpGet("power")]
     public async Task<IActionResult> GetPowerState()
     {
-        var status = await _driver.GetPowerState();
-
-        return Ok(status);
+        try
+        {
+            var status = await _driver.GetPowerState();
+            return Ok(status);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "An unexpected error occurred.");
+        }
     }
 
-
-    // IN <n>
     [HttpPost("input/{input}")]
     public async Task<IActionResult> SetInput(int input)
     {
         if (input < 1 || input > 4)
-        {
             return BadRequest("Input must be between 1 and 4.");
+
+        try
+        {
+            var response = await _driver.SetInput(input);
+            return Ok(response);
         }
-
-        var response = await _driver.SetInput(input);
-
-        return Ok(response);
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "An unexpected error occurred.");
+        }
     }
 
-
-    // IN ?
     [HttpGet("input")]
     public async Task<IActionResult> GetInput()
     {
-        var input = await _driver.GetInput();
-
-        return Ok(input);
+        try
+        {
+            var input = await _driver.GetInput();
+            return Ok(input);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "An unexpected error occurred.");
+        }
     }
 
-
-    // VOL <n>
     [HttpPost("volume/{volume}")]
     public async Task<IActionResult> SetVolume(int volume)
     {
         if (volume < 0 || volume > 100)
-        {
             return BadRequest("Volume must be between 0 and 100.");
+
+        try
+        {
+            var response = await _driver.SetVolume(volume);
+            return Ok(response);
         }
-
-        var response = await _driver.SetVolume(volume);
-
-        return Ok(response);
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "An unexpected error occurred.");
+        }
     }
 
-
-    // VOL ?
     [HttpGet("volume")]
     public async Task<IActionResult> GetVolume()
     {
-        var volume = await _driver.GetVolume();
-
-        return Ok(volume);
+        try
+        {
+            var volume = await _driver.GetVolume();
+            return Ok(volume);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "An unexpected error occurred.");
+        }
     }
 
-
-    // MUTE ON
     [HttpPost("mute/on")]
     public async Task<IActionResult> EnableMute()
     {
-        var response = await _driver.SetMute(true);
-
-        return Ok(response);
+        try
+        {
+            var response = await _driver.SetMute(true);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "An unexpected error occurred.");
+        }
     }
 
-
-    // MUTE OFF
     [HttpPost("mute/off")]
     public async Task<IActionResult> DisableMute()
     {
-        var response = await _driver.SetMute(false);
-
-        return Ok(response);
+        try
+        {
+            var response = await _driver.SetMute(false);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "An unexpected error occurred.");
+        }
     }
 
-
-    // MUTE ?
     [HttpGet("mute")]
     public async Task<IActionResult> GetMute()
     {
-        var mute = await _driver.GetMute();
-
-        return Ok(mute);
+        try
+        {
+            var mute = await _driver.GetMute();
+            return Ok(mute);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "An unexpected error occurred.");
+        }
     }
 
-
-    // Current device state
     [HttpGet("status")]
     public async Task<ActionResult<UnitPropertiesStatus>> GetStatus()
     {
-        var status = await _driver.GetStatus();
-
-        return Ok(status);
+        try
+        {
+            var status = await _driver.GetStatus();
+            return Ok(status);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "An unexpected error occurred.");
+        }
     }
 }

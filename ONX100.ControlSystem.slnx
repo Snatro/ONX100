@@ -3,4 +3,5 @@
   <Project Path="ONX100.Communication/ONX100.Communication.csproj" />
   <Project Path="ONX100.Driver/ONX100.Driver.csproj" />
   <Project Path="ONX100.Models/ONX100.Models.csproj" />
+  <Project Path="ONX100.Tests/ONX100.Tests.csproj" />
 </Solution>

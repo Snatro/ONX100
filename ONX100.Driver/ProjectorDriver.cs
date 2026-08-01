@@ -5,11 +5,11 @@ namespace ONX100.Driver;
 
 public class ProjectorDriver
 {
-    private readonly TcpClientConnection _connection;
+    private readonly ITcpClientConnection _connection;
 
 
     public ProjectorDriver(
-        TcpClientConnection connection)
+        ITcpClientConnection connection)
     {
         _connection = connection;
     }
@@ -21,20 +21,22 @@ public class ProjectorDriver
     }
 
 
-    private void EnsureConnected()
+    private async Task EnsureConnected()
     {
         if (!_connection.IsConnected)
         {
-            throw new InvalidOperationException(
-                "Device is not connected."
+            Console.WriteLine(
+                "Driver detected disconnected device. Reconnecting..."
             );
+
+            await _connection.Connect();
         }
     }
 
 
     public async Task<CommandResponse> PowerOn()
     {
-        EnsureConnected();
+        await EnsureConnected();
 
         return await ExecuteCommand("PWR ON");
     }
@@ -42,7 +44,7 @@ public class ProjectorDriver
 
     public async Task<CommandResponse> PowerOff()
     {
-        EnsureConnected();
+        await EnsureConnected();
 
         return await ExecuteCommand("PWR OFF");
     }
@@ -50,10 +52,10 @@ public class ProjectorDriver
 
     public async Task<bool> GetPowerState()
     {
-        EnsureConnected();
+        await EnsureConnected();
 
         var response =
-            await _connection.SendAndReceive("PWR ?");
+            await _connection.Query("PWR ?");
 
 
         ValidateResponse(response);
@@ -61,7 +63,6 @@ public class ProjectorDriver
 
         return response.Raw == "PWR ON";
     }
-
 
     public async Task<CommandResponse> SetInput(int input)
     {
@@ -74,7 +75,7 @@ public class ProjectorDriver
         }
 
 
-        EnsureConnected();
+        await EnsureConnected();
 
         return await ExecuteCommand(
             $"IN {input}"
@@ -84,11 +85,11 @@ public class ProjectorDriver
 
     public async Task<int> GetInput()
     {
-        EnsureConnected();
+        await EnsureConnected();
 
 
         var response =
-            await _connection.SendAndReceive("IN ?");
+            await _connection.Query("IN ?");
 
 
         ValidateResponse(response);
@@ -119,7 +120,7 @@ public class ProjectorDriver
         }
 
 
-        EnsureConnected();
+         await EnsureConnected();
 
         return await ExecuteCommand(
             $"VOL {volume}"
@@ -129,10 +130,10 @@ public class ProjectorDriver
 
     public async Task<int> GetVolume()
     {
-        EnsureConnected();
+        await EnsureConnected();
 
         var response =
-            await _connection.SendAndReceive("VOL ?");
+            await _connection.Query("VOL ?");
 
 
         var value = response.Raw
@@ -150,7 +151,7 @@ public class ProjectorDriver
     public async Task<CommandResponse> SetMute(
         bool enabled)
     {
-        EnsureConnected();
+        await EnsureConnected();
 
 
         var command = enabled
@@ -164,11 +165,11 @@ public class ProjectorDriver
 
     public async Task<bool> GetMute()
     {
-        EnsureConnected();
+        await EnsureConnected();
 
 
         var response =
-            await _connection.SendAndReceive("MUTE ?");
+            await _connection.Query("MUTE ?");
 
 
         ValidateResponse(response);
@@ -180,7 +181,7 @@ public class ProjectorDriver
 
     public async Task<UnitPropertiesStatus> GetStatus()
     {
-        EnsureConnected();
+        await EnsureConnected();
 
 
         var power =
@@ -207,35 +208,25 @@ public class ProjectorDriver
 
 
     private async Task<CommandResponse> ExecuteCommand(
-        string command)
+      string command)
     {
-        var response =
-            await _connection.SendAndReceive(command);
-
-
-        if (response.Type == MessageType.Error)
+        try
         {
-            return ErrorResponse(
-                response.Raw,
-                GetErrorMessage(response.Raw)
-            );
-        }
+            await _connection.SendCommand(command);
 
-
-        if (response.Raw == "OK")
-        {
             return new CommandResponse
             {
                 Success = true,
-                Response = response.Raw
+                Response = "OK"
             };
         }
-
-
-        return ErrorResponse(
-            response.Raw,
-            "Unexpected response"
-        );
+        catch (InvalidOperationException ex)
+        {
+            return ErrorResponse(
+                ex.Message,
+                GetErrorMessage(ex.Message)
+            );
+        }
     }
 
 

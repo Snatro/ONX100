@@ -44,6 +44,24 @@ public class DeviceMessageParser
             };
         }
 
+        if (message.Contains("session ended"))
+        {
+            return new DeviceMessage
+            {
+                Raw = message,
+                Type = MessageType.Disconnect
+            };
+        }
+
+        if (message.Contains("OK"))
+        {
+            return new DeviceMessage
+            {
+                Raw = message,
+                Type = MessageType.Acknowledge
+            };
+        }
+
 
         return new DeviceMessage
         {

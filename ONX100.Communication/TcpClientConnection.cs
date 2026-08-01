@@ -6,7 +6,7 @@ using System.Text;
 
 namespace ONX100.Communication;
 
-public class TcpClientConnection
+public class TcpClientConnection : ITcpClientConnection
 {
     private TcpClient? _client;
     private NetworkStream? _stream;
@@ -34,44 +34,38 @@ public class TcpClientConnection
 
     public async Task Connect()
     {
-        Disconnect();
-
-        _client = new TcpClient();
-
-        await _client.ConnectAsync(
-            _ip,
-            _port
-        );
-
-
-        _stream = _client.GetStream();
-
-
-        Console.WriteLine(
-            $"Connected to {_ip}:{_port}"
-        );
-    }
-
-
-    public void Disconnect()
-    {
         try
         {
-            _stream?.Dispose();
-            _client?.Close();
+            Disconnect();
+
+            _client = new TcpClient();
+
+            await _client.ConnectAsync(
+                _ip,
+                _port
+            );
+
+            _client.Client.SetSocketOption(
+                SocketOptionLevel.Socket,
+                SocketOptionName.KeepAlive,
+                true
+            );
+
+            _stream = _client.GetStream();
+
+            Console.WriteLine(
+                $"Connected to {_ip}:{_port}"
+            );
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore cleanup errors
+            Disconnect();
+
+            throw new InvalidOperationException(
+                $"Could not connect to device: {ex.Message}"
+            );
         }
-
-
-        _stream = null;
-        _client = null;
-
-        _receiveBuffer.Clear();
     }
-
 
     private async Task EnsureConnected()
     {
@@ -84,7 +78,6 @@ public class TcpClientConnection
             await Connect();
         }
     }
-
 
     private async Task Send(string command)
     {
@@ -106,7 +99,6 @@ public class TcpClientConnection
         }
         catch (IOException)
         {
-            Disconnect();
             throw;
         }
     }
@@ -132,8 +124,6 @@ public class TcpClientConnection
             {
                 case MessageType.Event:
 
-                    // Later:
-                    // Raise event to driver/frontend
                     Console.WriteLine(
                         $"Device event: {message.Raw}"
                     );
@@ -157,6 +147,10 @@ public class TcpClientConnection
                     );
 
                     continue;
+
+                case MessageType.Acknowledge:
+
+                    return message;
             }
 
 
@@ -165,50 +159,85 @@ public class TcpClientConnection
     }
 
 
-    public async Task<DeviceMessage> SendAndReceive(
-        string command)
+    private readonly SemaphoreSlim _commandLock = new(1, 1);
+
+
+    public async Task SendCommand(string command)
     {
-        for (int attempt = 0; attempt < 2; attempt++)
+        await _commandLock.WaitAsync();
+
+        try
         {
-            try
-            {
-                await EnsureConnected();
+            await EnsureConnected();
+
+            await Send(command);
 
 
-                await Send(command);
+            var response = await Receive();
 
 
-                return await Receive();
-            }
-            catch (IOException ex)
-            {
-                Console.WriteLine(
-                    $"Communication error: {ex.Message}"
-                );
+            Console.WriteLine(
+                $"COMMAND RESPONSE: {response.Raw}"
+            );
 
-
-                Disconnect();
-
-
-                if (attempt == 0)
-                {
-                    await Task.Delay(1000);
-
-                    await Connect();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            ValidateCommandResponse(response);
         }
-
-
-        throw new Exception(
-            "Unable to communicate with device."
-        );
+        finally
+        {
+            _commandLock.Release();
+        }
     }
 
+
+    public void Disconnect()
+    {
+        try
+        {
+            _stream?.Dispose();
+            _client?.Close();
+        }
+        catch
+        {
+            
+        }
+
+        _stream = null;
+        _client = null;
+
+        _receiveBuffer.Clear();
+    }
+
+
+
+
+
+
+    public async Task<DeviceMessage> Query(string command)
+    {
+        await _commandLock.WaitAsync();
+
+        try
+        {
+            await EnsureConnected();
+
+            await Send(command);
+
+
+            var response = await Receive();
+
+
+            Console.WriteLine(
+                $"QUERY RESPONSE: {response.Raw}"
+            );
+
+
+            return response;
+        }
+        finally
+        {
+            _commandLock.Release();
+        }
+    }
 
     private async Task<string> ReadMessage()
     {
@@ -231,6 +260,8 @@ public class TcpClientConnection
 
             if (bytesRead == 0)
             {
+                Disconnect();
+
                 throw new IOException(
                     "Device closed connection."
                 );
@@ -281,9 +312,20 @@ public class TcpClientConnection
         return message.Trim();
     }
 
+    private void ValidateCommandResponse(
+    DeviceMessage response)
+    {
+        if (response.Raw != "OK")
+        {
+            throw new InvalidOperationException(
+                $"Device command failed: {response.Raw}"
+            );
+        }
+    }
+
 
     public bool IsConnected =>
         _client != null &&
-        _client.Connected &&
-        _stream != null;
+        _stream != null &&
+        _client.Connected;
 }
