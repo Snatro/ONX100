@@ -256,17 +256,23 @@ public class ProjectorDriverTests
         Assert.False(result.IsMuted);
     }
 
-
     [Fact]
-    public async Task PowerOn_ShouldThrow_WhenDeviceIsDisconnected()
+    public async Task PowerOn_ShouldReconnect_WhenDisconnected()
     {
-        _connection
-            .Setup(x => x.IsConnected)
+        _connection.Setup(x => x.IsConnected)
             .Returns(false);
 
+        _connection.Setup(x => x.Connect())
+            .Returns(Task.CompletedTask);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _driver.PowerOn()
-        );
+        _connection.Setup(x => x.SendCommand("PWR ON"))
+            .Returns(Task.CompletedTask);
+
+        var result = await _driver.PowerOn();
+
+        _connection.Verify(x => x.Connect(), Times.Once);
+        _connection.Verify(x => x.SendCommand("PWR ON"), Times.Once);
+
+        Assert.True(result.Success);
     }
 }
